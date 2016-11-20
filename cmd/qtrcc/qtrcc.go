@@ -34,8 +34,6 @@ func main() {
 
 	var appName = filepath.Base(appPath)
 
-	utils.MakeFolder(filepath.Join(appPath, "qml"))
-
 	var (
 		rccPath string
 		qmlGo   = filepath.Join(appPath, "rrc.go")
@@ -70,6 +68,8 @@ func main() {
 	utils.Save(qmlGo, qmlHeader(appName))
 
 	if qmlQrc == "" {
+		utils.MakeFolder(filepath.Join(appPath, "qml"))
+
 		qmlQrc = filepath.Join(appPath, "rrc.qrc")
 		var rcc = exec.Command(rccPath, "-project", "-o", qmlQrc)
 		rcc.Dir = filepath.Join(appPath, "qml")
