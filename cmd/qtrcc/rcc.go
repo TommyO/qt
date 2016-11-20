@@ -7,23 +7,21 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"flag"
 
 	"github.com/therecipe/qt/internal/utils"
 )
 
 func main() {
-	var appPath string
 
-	switch len(os.Args) {
-	case 1:
-		{
-			appPath, _ = os.Getwd()
-		}
+	var qmlQrc string
+	flag.StringVar(&qmlQrc, "f", "", ".qrc file to use as initial source.")
 
-	case 2:
-		{
-			appPath = os.Args[1]
-		}
+	flag.Parse()
+
+	var appPath = flag.Arg(0)
+	if appPath == "" {
+		appPath, _ = os.Getwd()
 	}
 
 	if !filepath.IsAbs(appPath) {
@@ -36,7 +34,6 @@ func main() {
 	var (
 		rccPath string
 		qmlGo   = filepath.Join(appPath, "rrc.go")
-		qmlQrc  = filepath.Join(appPath, "rrc.qrc")
 		qmlCpp  = filepath.Join(appPath, "rrc.cpp")
 	)
 
@@ -67,17 +64,22 @@ func main() {
 
 	utils.Save(qmlGo, qmlHeader(appName))
 
-	var rcc = exec.Command(rccPath, "-project", "-o", qmlQrc)
-	rcc.Dir = filepath.Join(appPath, "qml")
-	utils.RunCmd(rcc, fmt.Sprintf("execute rcc.1 on %v", runtime.GOOS))
+	if qmlQrc == "" {
+		qmlQrc = filepath.Join(appPath, "rrc.qrc")
+		var rcc = exec.Command(rccPath, "-project", "-o", qmlQrc)
+		rcc.Dir = filepath.Join(appPath, "qml")
+		utils.RunCmd(rcc, fmt.Sprintf("execute rcc.1 on %v", runtime.GOOS))
 
-	utils.Save(qmlQrc, strings.Replace(utils.Load(qmlQrc), "<file>./", "<file>qml/", -1))
+		utils.Save(qmlQrc, strings.Replace(utils.Load(qmlQrc), "<file>./", "<file>qml/", -1))
 
-	if utils.Exists(filepath.Join(appPath, "qtquickcontrols2.conf")) {
-		utils.Save(qmlQrc, strings.Replace(utils.Load(qmlQrc), "<qresource>", "<qresource>\n<file>qtquickcontrols2.conf</file>", -1))
+		if utils.Exists(filepath.Join(appPath, "qtquickcontrols2.conf")) {
+			utils.Save(qmlQrc, strings.Replace(utils.Load(qmlQrc), "<qresource>", "<qresource>\n<file>qtquickcontrols2.conf</file>", -1))
+		}
+	} else {
+		qmlQrc = utils.GetAbsPath(qmlQrc)
 	}
 
-	rcc = exec.Command(rccPath, "-name", appName, "-o", qmlCpp, qmlQrc)
+	var rcc = exec.Command(rccPath, "-name", appName, "-o", qmlCpp, qmlQrc)
 	utils.RunCmd(rcc, fmt.Sprintf("execute rcc.2 on %v", runtime.GOOS))
 }
 
